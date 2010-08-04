@@ -14,7 +14,9 @@ jQ(document).ready(function (e) {
       },
       'plugins' : [ 'themes', 'json_data','search' ,'ui']
     });
-    
+  
+  var current_item = '';
+  
   jQ('#show li a').each( function(index) {
     var link = $(this).parent().attr('link');
     if (link !== undefined) {
@@ -22,10 +24,14 @@ jQ(document).ready(function (e) {
       $(this).click( function(e) {
         e.preventDefault();
         var target = ($(this).attr('href')).split('/');
-        target = target[target.length - 1];
-        $.get(document.location.href + '/node/' + target, function(data) {
-          $('#jstree_content').html(data);
-        });
+        var last_index = target.length -1;
+        
+        if (current_item != target[last_index]) {
+          target = current_item = target[last_index];
+          $.get(document.location.href + '/node/' + target, function(data) {
+            $('#jstree_content').html(data);
+          });
+        }
       });
     }
   });

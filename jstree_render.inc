@@ -30,18 +30,30 @@ function jstree_node($node) {
     $field_name = $row->field_name;
     
     if (!empty($field_name)) {
+      // Check multiple values field or not
+      // 1 : multiple = 0, unlimit : multiple = 1, otherwise : multiple = N
+      $field_settings = db_fetch_object(db_query("SELECT multiple FROM {content_node_field} WHERE field_name='{$field_name}'"));
+      if ($field_settings->multiple > 0) {
+        $field_table = "content_{$field_name}";
+        $delta = " ORDER BY delta";
+      }
+      else {
+        $field_table = "content_type_book";
+        $delta = '';
+      }
+      
       $res = db_query("SELECT 
         imgfield." . $field_name . "_data data, f.filepath 
-        FROM {content_" . $field_name . "} imgfield, {files} f 
+        FROM {" . $field_table . "} imgfield, {files} f 
         WHERE vid=" . $node->vid . " AND imgfield." . $field_name . "_fid=f.fid 
         AND f.status=1 AND " . $field_name . "_list=1 
-        ORDER BY delta");
+        $delta");
       
       $img_output = '';
       while ($row = db_fetch_object($res)) {
         $data = unserialize($row->data);
         $attributes = array('class' => 'image-item');
-        $img_output .= l(theme('imagecache', variable_get('jstree_imagecache_preset', ''), $row->filepath, $data['alt'], $data['title'], $attributes),
+        $img_output .= ' ' . l(theme('imagecache', variable_get('jstree_imagecache_preset', ''), $row->filepath, $data['alt'], $data['title'], $attributes),
           $row->filepath, 
           array('html' => TRUE, 'attributes'=>array('rel' => 'lightbox')));
         //$img_output .= '<img src="' . $row->filepath . '" />';
@@ -49,9 +61,16 @@ function jstree_node($node) {
       
       $output .= '<div class="image-items">' . $img_output . '</div>';
       // Refresh lightbox handler
-      $output .= '<script type="text/javascript">Lightbox.initList() ;</script>';
+      $output .= '<script type="text/javascript">Lightbox.initList() ; var count=' . rand() . ';</script>';
     }
   }
+  
+  // Cache results for delay some response (AJAX only, drupal should be cache normal processed page).
+  // Note: Aug 4, 2010 - Only Google Chrome couldn't cache this response properly.
+  $expires = 60;
+  header("Pragma: public");
+  header("Cache-Control: maxage=".$expires);
+  header('Expires: ' . gmdate('D, d M Y H:i:s', time()+$expires) . ' GMT');
   die($output);
 }
 
