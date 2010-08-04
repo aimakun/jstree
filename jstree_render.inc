@@ -14,7 +14,7 @@ function jstree_render(){
    
   </div>
   <div id="jstree_content" style="float:left;"> 
-  asd
+    ' . t('Select item on the left side to view descriptions.') . '
   </div>
 </div>
 ';
@@ -22,46 +22,60 @@ function jstree_render(){
 
 function jstree_node($node) {
   $output = '';
-  $output =$node->body;
-  if (function_exists('imagefield_elements')) {
-    // Get imagefield field, only first one.
-    $row = db_fetch_object(db_query("SELECT field_name FROM {content_node_field_instance} WHERE type_name='book' AND widget_module='imagefield' AND widget_active=1 LIMIT 1"));
-    
-    $field_name = $row->field_name;
-    
-    if (!empty($field_name)) {
-      // Check multiple values field or not
-      // 1 : multiple = 0, unlimit : multiple = 1, otherwise : multiple = N
-      $field_settings = db_fetch_object(db_query("SELECT multiple FROM {content_node_field} WHERE field_name='{$field_name}'"));
-      if ($field_settings->multiple > 0) {
-        $field_table = "content_{$field_name}";
-        $delta = " ORDER BY delta";
-      }
-      else {
-        $field_table = "content_type_book";
-        $delta = '';
-      }
+  
+  // Get node mlid from book
+  $node_book = db_fetch_object(db_query("SELECT mlid FROM {book} WHERE nid=" . $node->nid));
+  
+  if (!empty($node_book)) {
+    $output .= '
+  <div id="jstree_menu">
+      ' . l(t('Add new child on <em>%title</em>', array('%title' => $node->title)), 'node/add/book', 
+      array('html' => TRUE, 'query' => array(
+        'parent'=>$node_book->mlid, 
+        'destination' => 'jstree', // Refer to this module path
+      ))) . '
+  </div>';
+    $output .= $node->body;
+    if (function_exists('imagefield_elements')) {
+      // Get imagefield field, only first one.
+      $row = db_fetch_object(db_query("SELECT field_name FROM {content_node_field_instance} WHERE type_name='book' AND widget_module='imagefield' AND widget_active=1 LIMIT 1"));
       
-      $res = db_query("SELECT 
-        imgfield." . $field_name . "_data data, f.filepath 
-        FROM {" . $field_table . "} imgfield, {files} f 
-        WHERE vid=" . $node->vid . " AND imgfield." . $field_name . "_fid=f.fid 
-        AND f.status=1 AND " . $field_name . "_list=1 
-        $delta");
+      $field_name = $row->field_name;
       
-      $img_output = '';
-      while ($row = db_fetch_object($res)) {
-        $data = unserialize($row->data);
-        $attributes = array('class' => 'image-item');
-        $img_output .= ' ' . l(theme('imagecache', variable_get('jstree_imagecache_preset', ''), $row->filepath, $data['alt'], $data['title'], $attributes),
-          $row->filepath, 
-          array('html' => TRUE, 'attributes'=>array('rel' => 'lightbox')));
-        //$img_output .= '<img src="' . $row->filepath . '" />';
+      if (!empty($field_name)) {
+        // Check multiple values field or not
+        // 1 : multiple = 0, unlimit : multiple = 1, otherwise : multiple = N
+        $field_settings = db_fetch_object(db_query("SELECT multiple FROM {content_node_field} WHERE field_name='{$field_name}'"));
+        if ($field_settings->multiple > 0) {
+          $field_table = "content_{$field_name}";
+          $delta = " ORDER BY delta";
+        }
+        else {
+          $field_table = "content_type_book";
+          $delta = '';
+        }
+        
+        $res = db_query("SELECT 
+          imgfield." . $field_name . "_data data, f.filepath 
+          FROM {" . $field_table . "} imgfield, {files} f 
+          WHERE vid=" . $node->vid . " AND imgfield." . $field_name . "_fid=f.fid 
+          AND f.status=1 AND " . $field_name . "_list=1 
+          $delta");
+        
+        $img_output = '';
+        while ($row = db_fetch_object($res)) {
+          $data = unserialize($row->data);
+          $attributes = 'image-item';
+          $img_output .= ' ' . l(theme('imagecache', variable_get('jstree_imagecache_preset', ''), $row->filepath, $data['alt'], $data['title'], $attributes),
+            $row->filepath, 
+            array('html' => TRUE, 'attributes'=>array('rel' => 'lightbox')));
+          //$img_output .= '<img src="' . $row->filepath . '" />';
+        }
+        
+        $output .= '<div class="image-items">' . $img_output . '</div>';
+        // Refresh lightbox handler
+        $output .= '<script type="text/javascript">Lightbox.initList() ; var count=' . rand() . ';</script>';
       }
-      
-      $output .= '<div class="image-items">' . $img_output . '</div>';
-      // Refresh lightbox handler
-      $output .= '<script type="text/javascript">Lightbox.initList() ; var count=' . rand() . ';</script>';
     }
   }
   
