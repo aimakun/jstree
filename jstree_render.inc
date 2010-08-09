@@ -21,13 +21,15 @@ function jstree_render(){
 }
 
 function jstree_node($node) {
+  global $user;
   $output = '';
   
   // Get node mlid from book
   $node_book = db_fetch_object(db_query("SELECT mlid FROM {book} WHERE nid=" . $node->nid));
   
   if (!empty($node_book)) {
-    $output .= '
+    if (user_access('create book content')) {
+      $output .= '
   <div id="jstree_menu">
       ' . l(t('Add new child on <em>%title</em>', array('%title' => $node->title)), 'node/add/book', 
       array('html' => TRUE, 'query' => array(
@@ -35,7 +37,15 @@ function jstree_node($node) {
         'destination' => 'jstree', // Refer to this module path
       ))) . '
   </div>';
-    $output .= $node->body;
+    }
+    
+    $output .= '  <div class="node-body">' . "\n";
+    if ((user_access('edit own book content') && $node->uid == $user->uid) || user_access('edit any book content')) {
+      $output .= '    <div class="edit-book">' . l(t('Edit this content'), 'node/' . $node->nid . '/edit', array('query' => array('destination' => 'jstree'))) . "</div>\n";
+    }
+    $output .= $node->body . '
+  </div>';
+    
     if (function_exists('imagefield_elements')) {
       // Get imagefield field, only first one.
       $row = db_fetch_object(db_query("SELECT field_name FROM {content_node_field_instance} WHERE type_name='book' AND widget_module='imagefield' AND widget_active=1 LIMIT 1"));
@@ -72,9 +82,9 @@ function jstree_node($node) {
           //$img_output .= '<img src="' . $row->filepath . '" />';
         }
         
-        $output .= '<div class="image-items">' . $img_output . '</div>';
+        $output .= '  <div class="image-items">' . $img_output . '</div>';
         // Refresh lightbox handler
-        $output .= '<script type="text/javascript">Lightbox.initList() ; var count=' . rand() . ';</script>';
+        $output .= '  <script type="text/javascript">Lightbox.initList() ; var count=' . rand() . ';</script>';
       }
     }
   }
