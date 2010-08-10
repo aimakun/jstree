@@ -7,14 +7,17 @@ function jstree_render(){
   drupal_add_js(drupal_get_path('module', 'jstree') . '/main.js');
   return '<div id="container">
   <div>
-    <input id="search_input" type="text" />
-    <input id="btn" type="button" value="Search"/>
+    <form id="form_jstree_search">
+      <input id="search_input" type="text" />
+      <input id="btn" type="submit" value="Search"/>
+    </form>
   </div>
-  <div id="show" style="width:150px;height:200px;float:left;">
-   
+  <div id="jstree_show">
   </div>
-  <div id="jstree_content" style="float:left;"> 
+  <div id="jstree_content"> 
     ' . t('Select item on the left side to view descriptions.') . '
+  </div>
+  <div id="jstree_thumb">
   </div>
 </div>
 ';
@@ -23,6 +26,7 @@ function jstree_render(){
 function jstree_node($node) {
   global $user;
   $output = '';
+  $path = drupal_urlencode('jstree');
   
   // Get node mlid from book
   $node_book = db_fetch_object(db_query("SELECT mlid FROM {book} WHERE nid=" . $node->nid));
@@ -34,15 +38,16 @@ function jstree_node($node) {
       ' . l(t('Add new child on <em>%title</em>', array('%title' => $node->title)), 'node/add/book', 
       array('html' => TRUE, 'query' => array(
         'parent'=>$node_book->mlid, 
-        'destination' => 'jstree', // Refer to this module path
+        'destination' => $path, // Refer to this module path
       ))) . '
   </div>';
     }
     
     $output .= '  <div class="node-body">' . "\n";
     if ((user_access('edit own book content') && $node->uid == $user->uid) || user_access('edit any book content')) {
-      $output .= '    <div class="edit-book">' . l(t('Edit this content'), 'node/' . $node->nid . '/edit', array('query' => array('destination' => 'jstree'))) . "</div>\n";
+      $output .= '    <div class="edit-book">' . l(t('Edit this content'), 'node/' . $node->nid . '/edit', array('query' => array('destination' => $path))) . "</div>\n";
     }
+    $output .= "<h2 class=\"node-title\">{$node->title}</h2>";
     $output .= $node->body . '
   </div>';
     
@@ -76,15 +81,13 @@ function jstree_node($node) {
         while ($row = db_fetch_object($res)) {
           $data = unserialize($row->data);
           $attributes = 'image-item';
-          $img_output .= ' ' . l(theme('imagecache', variable_get('jstree_imagecache_preset', ''), $row->filepath, $data['alt'], $data['title'], $attributes),
+          $img_output .= ' ' . l(theme('imagecache', variable_get('jstree_imagecache_preset', ''), $row->filepath, $data['description'], $data['description'], $attributes),
             $row->filepath, 
             array('html' => TRUE, 'attributes'=>array('rel' => 'lightbox')));
           //$img_output .= '<img src="' . $row->filepath . '" />';
         }
         
-        $output .= '  <div class="image-items">' . $img_output . '</div>';
-        // Refresh lightbox handler
-        $output .= '  <script type="text/javascript">Lightbox.initList() ; var count=' . rand() . ';</script>';
+        $output .= '  <div id="image-items-hidden">' . $img_output . '</div>';
       }
     }
   }
