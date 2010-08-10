@@ -964,6 +964,12 @@ var jQ = jQuery.noConflict();
 					obj.children("a").addClass("jstree-clicked");
 					this.data.ui.selected = this.data.ui.selected.add(obj);
 					this.data.ui.last_selected = obj;
+					if (obj.hasClass('jstree-closed')) {
+					  this.open_node(obj.children("ul")[0]);
+					}
+					else {
+					  this.close_node(obj.children("ul")[0]);
+					}
 					this.__callback({ "obj" : obj });
 				}
 			},
